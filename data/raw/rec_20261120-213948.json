@@ -1,0 +1,52 @@
+{
+  "name": "rec_20261120-213948",
+  "csv": "rec_20261120-213948.csv",
+  "imu_csv": "rec_20261120-213948_imu.csv",
+  "started_at": "2026-11-20T21:39:48+00:00",
+  "stopped_at": "2026-11-20T21:40:17+00:00",
+  "rows": 290,
+  "seconds": 0.0,
+  "totals": {
+    "t": 156520,
+    "distance_m": 0.0,
+    "since_turn_m": 0.0,
+    "heading_deg": 0.0,
+    "heading_rate_dps": 39.3,
+    "turns": 0,
+    "last_turn": null,
+    "steps": 0,
+    "cnn_steps": 0,
+    "gyro_steps": 0,
+    "detector": "gyro"
+  },
+  "step_source": "gyro",
+  "weinberg_K": 0.7312,
+  "walk_yaw_drift_dps": 1.73,
+  "turn": {
+    "deg": 60.0,
+    "window_s": 2.0
+  },
+  "turning_flag_dps": {
+    "enter": 30.0,
+    "exit": 15.0
+  },
+  "model": "step_detector_imu.npz",
+  "columns": [
+    "unix_time",
+    "t_s",
+    "distance_m",
+    "since_turn_m",
+    "heading_deg",
+    "turns",
+    "steps",
+    "cnn_steps",
+    "gyro_steps",
+    "detector",
+    "event",
+    "advice",
+    "advice_raw",
+    "advice_m"
+  ],
+  "mode": "navigate",
+  "person": "Ceci"
+}
