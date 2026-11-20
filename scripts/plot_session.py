@@ -68,7 +68,8 @@ def main():
 
     fig, (a1, a2, a3) = plt.subplots(3, 1, figsize=(12, 8.2), sharex=True, layout="constrained",
                                      gridspec_kw={"height_ratios": [3, 3, 1.3]})
-    gyro_on = spans(t, df["detector"] == "gyro")
+    # shade the turning intervals only when the detector actually switched ("fused" sessions)
+    gyro_on = spans(t, df["detector"] == "gyro") if df["detector"].nunique() > 1 else []
     for ax in (a1, a2):
         for s, e in gyro_on:
             ax.axvspan(s, e, color=SHADE, linewidth=0, zorder=0)
@@ -77,32 +78,38 @@ def main():
 
     a1.plot(t, df["heading_deg"], color=SERIES["steps"], linewidth=2)
     style(a1, "heading (deg, + = right)")
-    a1.set_title(f"{csv.stem}: heading, step counts and events   (shaded = detector column 'gyro')",
+    a1.set_title(f"{csv.stem}: heading, step counts and events"
+                 + ("   (shaded = gyro detector active, turning)" if gyro_on else ""),
                  loc="left", color=INK, fontsize=11)
 
     end = t.iloc[-1]
-    for col in ("steps", "cnn_steps", "gyro_steps"):
-        a2.step(t, df[col], where="post", color=SERIES[col], linewidth=2, label=LABELS[col])
-        a2.annotate(f"{LABELS[col]} {df[col].iloc[-1]}", (end, df[col].iloc[-1]), xytext=(6, 0),
+    same = (df["steps"] == df["gyro_steps"]).all()       # STEP_SOURCE "gyro": one line, not two on top of each other
+    labels = dict(LABELS, gyro_steps="gyro stride detector = counted steps") if same else LABELS
+    for col in (("cnn_steps", "gyro_steps") if same else ("steps", "cnn_steps", "gyro_steps")):
+        a2.step(t, df[col], where="post", color=SERIES[col], linewidth=2, label=labels[col])
+        a2.annotate(f"{labels[col]} {df[col].iloc[-1]}", (end, df[col].iloc[-1]), xytext=(6, 0),
                     textcoords="offset points", va="center", fontsize=9, color=INK)
     style(a2, "steps (running count)")
     a2.legend(frameon=False, labelcolor=MUTED, loc="upper left", fontsize=9)
 
     rows = {"buttons": 1, "auto turns": 0}
+    lift, prev = 0, None
     for ti, e in buttons:
+        lift = 1 - lift if prev is not None and ti - prev < 3 else 0      # stagger labels of close presses
+        prev = ti
         a3.scatter(ti, rows["buttons"], marker=BUTTON_MARK[e], s=90, color=INK, zorder=3)
-        a3.annotate(e, (ti, rows["buttons"]), xytext=(0, 9), textcoords="offset points", ha="center",
+        a3.annotate(e, (ti, rows["buttons"]), xytext=(0, 9 + 11 * lift), textcoords="offset points", ha="center",
                     fontsize=8, color=INK)
     for ti, e in turns:
         a3.scatter(ti, rows["auto turns"], marker=TURN_MARK[e], s=90, color=MUTED, zorder=3)
         a3.annotate(e[-1], (ti, rows["auto turns"]), xytext=(0, -15), textcoords="offset points", ha="center",
                     fontsize=8, color=MUTED)
     a3.set_yticks([0, 1], ["auto turns", "your buttons"])
-    a3.set_ylim(-0.8, 1.8)
+    a3.set_ylim(-0.8, 2.1)
     style(a3, "")
     a3.grid(axis="y", visible=False)
     a3.set_xlabel("time since Start (s)", color=MUTED)
-    a3.set_xlim(t.iloc[0], end * 1.09)       # room for the end labels
+    a3.set_xlim(t.iloc[0], end * 1.16)       # room for the end labels
 
     out = args.out or csv.with_suffix(".png")
     fig.savefig(out, dpi=130)
