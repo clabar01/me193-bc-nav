@@ -9,7 +9,7 @@ the last steps are decided. Compares:
   - live CNN count vs the offline pipeline (old repo's counting.count_steps on
     the same IMU-only model): checks the numpy port and the live windowing;
   - live gyro count vs the offline gyro stride detector (strides.step_times);
-  - fused count vs your hand count, distance vs the tape-measured distance,
+  - counted steps (nav.STEP_SOURCE) vs your hand count, distance vs the tape-measured distance,
     turns detected, net heading, time with the gyro detector active.
 Writes models/nav_replay.md.
 """
@@ -81,7 +81,7 @@ def main():
             "trial": name, "speed": meta.get("speed"), "counted": meta["counted_steps"],
             "CNN live": n.cnn_steps, "CNN offline": len(count_steps(y, gy)),
             "gyro live": n.gyro_steps, "gyro offline": len(step_times(gy)),
-            "fused": n.steps, "fused err": n.steps - meta["counted_steps"],
+            "steps": n.steps, "steps err": n.steps - meta["counted_steps"],
             "distance_m": dist if dist else "", "est_m": round(n.distance_m, 2),
             "dist err %": round(100 * (n.distance_m - dist) / dist, 1) if dist else "",
             "turns": n.turns, "net heading": round(n.heading - n.heading0),
@@ -94,15 +94,15 @@ def main():
     lines = [
         f"CNN live = offline on {int((out['CNN live'] == out['CNN offline']).sum())} of {len(out)} trials; "
         f"gyro live = offline on {int((out['gyro live'] == out['gyro offline']).sum())} of {len(out)}.",
-        f"Straight walks (A/B/C, {len(walks)} trials): fused count MAE "
-        f"{walks['fused err'].abs().mean():.2f} steps (CNN live {(walks['CNN live'] - walks.counted).abs().mean():.2f}, "
+        f"Step source {nav.STEP_SOURCE!r}, K {nav.WEINBERG_K}. Straight walks (A/B/C, {len(walks)} trials): "
+        f"counted steps MAE {walks['steps err'].abs().mean():.2f} steps (CNN live {(walks['CNN live'] - walks.counted).abs().mean():.2f}, "
         f"gyro live {(walks['gyro live'] - walks.counted).abs().mean():.2f}); turns detected in "
         f"{int((walks.turns > 0).sum())} of them.",
         f"Distance ({len(dists)} trials with a tape-measured distance): mean |error| "
         f"{dists['dist err %'].astype(float).abs().mean():.1f}%, bias {dists['dist err %'].astype(float).mean():+.1f}%.",
     ]
     for _, r in out[out.trial == "bench_05"].iterrows():
-        lines.append(f"bench_05 (room with turns, {r.counted} steps): fused {r.fused}, CNN {r['CNN live']}, "
+        lines.append(f"bench_05 (room with turns, {r.counted} steps): counted {r.steps}, CNN {r['CNN live']}, "
                      f"gyro {r['gyro live']}; {r.turns} turns detected; gyro active {r['gyro active s']} of "
                      f"{r['length s']} s.")
     print("\n" + "\n".join(lines))

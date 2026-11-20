@@ -15,15 +15,16 @@ Each session <name> = rec_<YYYYmmdd-HHMMSS> writes three files to the folder:
 CSV columns:
   unix_time          board clock, s
   t_s                s since the session started (sketch clock)
-  distance_m         total distance (Weinberg on the fused steps)
+  distance_m         total distance (Weinberg on the counted steps)
   since_turn_m       distance since the last detected turn
   heading_deg        + = right, 0 at the session start, unwrapped
   turns              turns detected (>= 60 deg within 2 s)
-  steps              fused step count
+  steps              counted steps: the step source in the JSON (nav.STEP_SOURCE;
+                     "gyro" since 2026-11-20, earlier sessions "fused")
   cnn_steps          the CNN's own running count
   gyro_steps         the gyro stride detector's own running count
-  detector           which detector the fused count is taking steps from
-                     now: cnn (straight) or gyro (turning)
+  detector           which detector steps is taking steps from now: always gyro
+                     with STEP_SOURCE "gyro"; cnn (straight) / gyro (turning) with "fused"
   event              button presses since the last row (LEFT, RIGHT, STAIRS,
                      ARRIVED), detected turns (TURN_L, TURN_R), START, STOP;
                      several are joined with ";"

@@ -1,4 +1,4 @@
-"""Dead reckoning from the thigh IMU: heading, turns, steps (two detectors, fused) and distance.
+"""Dead reckoning from the thigh IMU: heading, turns, steps and distance.
 
 Pure numpy (no Arduino imports), so the laptop replays recordings through
 exactly what the board runs. main.py calls add() from the Bridge handler for
@@ -31,9 +31,14 @@ Turn detector
     (|1 s mean rate| < TURN_EXIT_DPS for TURN_EXIT_HOLD samples) before it can
     count another, so a single U-turn counts once.
 
-Steps: CNN (straight walking) and gyro stride detector (turns)
-    Both run all the time and keep their own running counts (cnn_steps,
-    gyro_steps). The fused count (steps) takes each detector's steps only where
+Steps: STEP_SOURCE = "gyro" (current) or "fused"
+    The CNN and the gyro stride detector both run all the time and keep their
+    own running counts (cnn_steps, gyro_steps), which are logged either way.
+    "gyro": the counted steps (steps, and distance) are the gyro stride
+    detector's, everywhere. Chosen after the first room walk on the board
+    (rec_20261120-183930), where the IMU-only CNN found 0 steps and the gyro
+    detector 80.
+    "fused": the counted steps take each detector's steps only where
     that detector is active, judged at the STEP's sample (not when it is
     reported, 1.5 s later): CNN where the turning flag is off, gyro where it is
     on. Near a switch the two detectors can place the same step on either side
@@ -46,7 +51,7 @@ Steps: CNN (straight walking) and gyro stride detector (turns)
 Distance (Weinberg)
     Each fused step's length is K * (max|a| - min|a|)^0.25 over the interval
     from the previous fused step (if within 1.5 s; else the last typical step
-    interval) to this step. K = 0.7419 (scripts/calibrate_weinberg.py, all 14
+    interval) to this step. K = WEINBERG_K (scripts/calibrate_weinberg.py, all 14
     old hallway distance trials). distance_since_turn adds only steps at or
     after the sample where the last turn was detected.
 """
@@ -76,7 +81,8 @@ TURN_WINDOW_S = 2.0
 SWITCH_MARGIN = 15           # 0.3 s: steps this close to a detector switch are taken from both
 DEDUPE = 13                  # 0.26 s: closer than this to a counted step = the same step
 
-WEINBERG_K = 0.7419
+STEP_SOURCE = "gyro"          # "gyro": all steps from the gyro stride detector; "fused": see above
+WEINBERG_K = 0.7312           # scripts/calibrate_weinberg.py --steps gyro (all 14 hallway trials; 0.7419 for the CNN's steps)
 WEINBERG_EXP = 0.25
 MAX_STEP_GAP = int(1.5 * FS) # previous step further back than this: use a typical interval instead
 DEFAULT_GAP = 28             # typical step interval (0.56 s) before any steps are known
@@ -212,7 +218,7 @@ class Navigator:
 
     # ---------- every 0.25 s ----------
     def process(self):
-        """Run both detectors and fuse their new steps. Returns the fused steps added: [(index, length_m)]."""
+        """Run both detectors and count new steps (STEP_SOURCE). Returns the steps added: [(index, length_m)]."""
         new = [("cnn", j) for j, _ in self.cnn.process()] + [("gyro", j) for j, _ in self.gyro.process()]
         for src, j in new:
             if j >= self.start:
@@ -223,16 +229,19 @@ class Navigator:
         added = []
         pending = self.waiting + sorted(new, key=lambda p: p[1])
         self.waiting = []
+        if STEP_SOURCE == "gyro":
+            pending = [(src, j) for src, j in pending if src == "gyro"]
         for src, j in pending:
-            if j + SWITCH_MARGIN > self.mode_upto:     # flag not known yet (doesn't happen with these lags)
+            if STEP_SOURCE != "gyro" and j + SWITCH_MARGIN > self.mode_upto:   # flag not known yet (doesn't happen)
                 self.waiting.append((src, j))
                 continue
             if j < self.start:
                 continue
-            active = "gyro" if self._mode(j) else "cnn"
-            near_switch = any(abs(j - s) <= SWITCH_MARGIN for s in self.switches)
-            if src != active and not near_switch:
-                continue
+            if STEP_SOURCE != "gyro":
+                active = "gyro" if self._mode(j) else "cnn"
+                near_switch = any(abs(j - s) <= SWITCH_MARGIN for s in self.switches)
+                if src != active and not near_switch:
+                    continue
             if any(abs(j - k) < DEDUPE for k, _ in self.fused):
                 continue
             length = self._length(j)
@@ -282,5 +291,5 @@ class Navigator:
             "steps": self.steps,
             "cnn_steps": self.cnn_steps,
             "gyro_steps": self.gyro_steps,
-            "detector": "gyro" if self.turning else "cnn",
+            "detector": "gyro" if STEP_SOURCE == "gyro" or self.turning else "cnn",
         }

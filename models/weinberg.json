@@ -1,23 +1,51 @@
 {
- "K": 0.7419,
- "exponent": 0.25,
- "formula": "step_m = K * (max|a| - min|a| over [this step, next step))^0.25, |a| in g, 50 Hz",
- "steps_from": "models/step_detector_imu.npz with counting.count_steps",
- "fitted_on": [
-  "B_01",
-  "B_02",
-  "B_03",
-  "B_04",
-  "B_05",
-  "B_06",
-  "B_07",
-  "B_08",
-  "C_01",
-  "C_02",
-  "C_03",
-  "C_04",
-  "C_05",
-  "C_06"
- ],
- "K_fitted_on_B_only": 0.7322
+ "by_steps": {
+  "cnn": {
+   "K": 0.7419,
+   "exponent": 0.25,
+   "formula": "step_m = K * (max|a| - min|a| over [this step, next step))^0.25, |a| in g, 50 Hz",
+   "steps_from": "models/step_detector_imu.npz with counting.count_steps",
+   "fitted_on": [
+    "B_01",
+    "B_02",
+    "B_03",
+    "B_04",
+    "B_05",
+    "B_06",
+    "B_07",
+    "B_08",
+    "C_01",
+    "C_02",
+    "C_03",
+    "C_04",
+    "C_05",
+    "C_06"
+   ],
+   "K_fitted_on_B_only": 0.7322
+  },
+  "gyro": {
+   "K": 0.7312,
+   "K_fitted_on_B_only": 0.7364,
+   "exponent": 0.25,
+   "steps_from": "board/me193_nav nav.py replay, gyro stride detector, window = previous step to this step",
+   "fitted_on": [
+    "B_01",
+    "B_02",
+    "B_03",
+    "B_04",
+    "B_05",
+    "B_06",
+    "B_07",
+    "B_08",
+    "C_01",
+    "C_02",
+    "C_03",
+    "C_04",
+    "C_05",
+    "C_06"
+   ]
+  }
+ },
+ "formula": "step_m = K * (max|a| - min|a| over one step)^0.25, |a| in g, 50 Hz",
+ "board_uses": "gyro"
 }

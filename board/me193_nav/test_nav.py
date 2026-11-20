@@ -23,9 +23,11 @@ MODEL = HERE / "python" / "models" / "step_detector_imu.npz"
 SWITCH = 1000               # the turning flag switches from CNN to gyro at this sample
 
 
-def fake_nav(cnn, gyro, switch_back=None):
+def fake_nav(cnn, gyro, switch_back=None, source="fused"):
     """A Navigator whose detectors report exactly these step indices and whose
-    turning flag is on from SWITCH (to switch_back)."""
+    turning flag is on from SWITCH (to switch_back). The fusion tests use the
+    "fused" step source; the board runs "gyro"."""
+    nav.STEP_SOURCE = source
     n = nav.Navigator(MODEL)
     n.start_session(0)
     end = 3000
@@ -71,6 +73,17 @@ def test_walk_through_a_turn_no_double_no_gap():
     gyro = [s + int(rng.integers(-4, 5)) for s in true]
     n = fake_nav(cnn, gyro, switch_back=1200)
     assert n.steps == len(true), (n.steps, len(true))
+
+
+def test_gyro_source_counts_every_gyro_step():
+    # the board's setting: every gyro step counts, turning or not; CNN steps are only logged
+    cnn = [700, 728, 756, 1300, 1328]
+    gyro = [701, 729, 757, 1301, 1329, 1357]
+    n = fake_nav(cnn, gyro, source="gyro")
+    assert n.steps == 6, n.steps
+    assert (n.cnn_steps, n.gyro_steps) == (5, 6)
+    assert n.snapshot()["detector"] == "gyro"
+    assert n.distance_m > 0
 
 
 def test_late_step_dedupes():
@@ -155,7 +168,9 @@ def test_session_log():
 
 if __name__ == "__main__":
     tests = [(k, v) for k, v in dict(globals()).items() if k.startswith("test_")]
+    board_source = nav.STEP_SOURCE
     for name, fn in tests:
+        nav.STEP_SOURCE = board_source
         fn()
         print(f"ok  {name}")
     print(f"{len(tests)} passed")

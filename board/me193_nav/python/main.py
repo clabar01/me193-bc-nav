@@ -7,7 +7,7 @@ ultrasonic any more). This side:
   every sample   nav.Navigator.add(): heading, turning flag, turn detector
                  (cheap); session.Recorder.add_sample() while recording
   every 0.25 s   nav.Navigator.process(): the CNN and gyro step detectors,
-                 fused, and Weinberg distance
+                 counted per nav.STEP_SOURCE (gyro), and Weinberg distance
   every 0.1 s    while recording, one CSV row (session.py) with the button
                  presses since the last row
   HTTP :PORT     the phone page (web/index.html) and its API:
@@ -63,7 +63,7 @@ STALE_S = 1.0               # no sample for this long: the page shows "no sensor
 lock = threading.Lock()     # the navigator and the recorder's start/stop
 navigator = nav.Navigator(MODEL)
 recorder = Recorder(RECORD_DIR, meta={
-    "weinberg_K": nav.WEINBERG_K, "walk_yaw_drift_dps": nav.WALK_YAW_DRIFT_DPS,
+    "step_source": nav.STEP_SOURCE, "weinberg_K": nav.WEINBERG_K, "walk_yaw_drift_dps": nav.WALK_YAW_DRIFT_DPS,
     "turn": {"deg": nav.TURN_DEG, "window_s": nav.TURN_WINDOW_S},
     "turning_flag_dps": {"enter": nav.TURN_ENTER_DPS, "exit": nav.TURN_EXIT_DPS},
     "model": MODEL.name, "columns": list(FIELDS)})
