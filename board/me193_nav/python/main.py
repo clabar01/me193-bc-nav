@@ -18,7 +18,8 @@ ultrasonic any more). This side:
                    POST /api/start         start recording (zeroes distance, heading, counts)
                    POST /api/stop
                    POST /api/event         {"button": "LEFT" | "RIGHT" | "STAIRS" | "ARRIVED"}
-  LED matrix     ready / rec (blinking), via Bridge.call("show_icon")
+  LED matrix     blank while idle (the sketch clears it at boot, so nothing from
+                 a previous app stays on); blinking dot while recording.
 
 Nothing here waits on the sensor: the Bridge handler only does arithmetic and
 appends to lists; files are written from the logging thread.
@@ -132,7 +133,7 @@ def led_loop():
     last_icon, last_sent = None, 0.0
     while True:
         time.sleep(0.25)
-        icon = "rec" if recorder.recording else "ready"
+        icon = "rec" if recorder.recording else "off"      # "off": no such icon -> blank
         now = time.monotonic()
         if icon != last_icon or now - last_sent >= LED_REFRESH_S:
             last_sent = now

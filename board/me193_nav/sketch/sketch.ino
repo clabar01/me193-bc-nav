@@ -75,8 +75,8 @@ const float BODY_R[3][3] = {
 // ===================== LED MATRIX ICONS (13 x 8) =====================
 // One string per row, '#' = LED on. Edit freely, but keep 8 rows of exactly
 // 13 characters. board/run_board_app.py prints these as ASCII.
-// ready = idle; rec = recording a session (blinks). count / saved / error are
-// unused by me193_nav but kept for the other apps' Python sides.
+// me193_nav uses only rec (recording, blinks); idle is blank (any unknown label,
+// e.g. "off", clears the matrix). The others are unused but kept.
 const char *const ICON_READY[8] = {
   ".............",
   "..##.........",
@@ -266,7 +266,7 @@ void setup() {
   Bridge.begin();
   Monitor.begin();
   matrix.begin();
-  matrix.clear();
+  matrix.clear();               // start blank: nothing left over from the previous app
   Bridge.provide("show_icon", show_icon);
 
   sensorOk = initSensor();
