@@ -1,0 +1,15 @@
+# app.yaml: The main configuration file for your Arduino App.
+# This file describes the application's metadata and properties.
+
+# The user-visible name of the application.
+name: me193_nav
+
+# The icon for the application, can be an emoji or a short string.
+icon: 🧭
+
+# A list of network ports that the application exposes.
+# 7000: the phone page served by python/main.py (its own HTTP server, no Brick).
+ports: [7000]
+
+# A list of bricks used by this application.
+bricks: []
