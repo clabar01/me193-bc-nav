@@ -50,6 +50,11 @@
   .advice svg { width: min(46vw, 210px); height: min(46vw, 210px); display: block; margin: 0 auto; transition: transform .25s; }
   .advice .what { font-size: 32px; font-weight: 800; margin-top: 6px; }
   .advice .far { font-size: 22px; font-weight: 600; color: var(--muted); min-height: 28px; font-variant-numeric: tabular-nums; }
+  .lost { display: none; padding: 26px 10px 18px; border-radius: 12px; background: var(--rec); color: #fff; }
+  .lost b { display: block; font-size: 40px; font-weight: 900; letter-spacing: .04em; }
+  .lost span { display: block; margin-top: 6px; font-size: 16px; font-weight: 600; opacity: .92; }
+  .advice.sensorlost .lost { display: block; }
+  .advice.sensorlost svg, .advice.sensorlost .what, .advice.sensorlost .far { display: none; }
   .voice { margin-top: 10px; border: 1px solid var(--line); background: var(--soft); color: var(--ink); border-radius: 99px;
     padding: 8px 14px; font-size: 14px; font-weight: 600; touch-action: manipulation; }
   .voice.on { color: var(--ok); }
@@ -118,6 +123,7 @@
   </section>
 
   <section class="card advice" id="advice" aria-live="assertive">
+    <div class="lost" role="alert"><b>SENSOR LOST</b><span>No IMU data from the thigh sensor. Stop and check it.</span></div>
     <svg id="icon" viewBox="0 0 100 100" aria-hidden="true"></svg>
     <div class="what" id="what">–</div>
     <div class="far" id="far"></div>
@@ -179,7 +185,7 @@ const ICONS = {
 const ROT = { LEFT: -90, RIGHT: 90 };
 
 let st = null, failures = 0, busy = false, counts = {}, mode = "record", people = {}, policyOk = false;
-let voiceOn = false, lastSaid = null, shown = null;
+let voiceOn = false, lastSaid = null, shown = null, wasLost = false;
 
 function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function recall(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -232,7 +238,17 @@ function setMode(m) {
 
 function renderAdvice(active) {
   $("advice").classList.toggle("show", active);
-  if (!active) { shown = null; return; }
+  if (!active) { shown = null; wasLost = false; return; }
+  // no IMU samples: hide the arrow, warn, and say it once (and again when it comes back)
+  const lost = !st.sensor_ok || st.advice === "SENSOR_LOST";
+  $("advice").classList.toggle("sensorlost", lost);
+  if (lost !== wasLost) {
+    if (lost) { say("Sensor lost"); buzz([200, 100, 200, 100, 200]); }
+    else say("Sensor back");
+    wasLost = lost;
+    lastSaid = "STRAIGHT"; shown = null;     // speak the next real advice again
+  }
+  if (lost) return;
   const a = st.advice || "STRAIGHT";
   if (a !== shown) {
     $("icon").innerHTML = ICONS[a];

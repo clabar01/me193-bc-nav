@@ -32,7 +32,8 @@ CSV columns:
                      wrong here"), detected turns (TURN_L, TURN_R), START,
                      STOP; several are joined with ";"
   advice             the policy's smoothed action (STRAIGHT, LEFT, RIGHT,
-                     STAIRS, ARRIVED; 1 s majority), what Navigate / DAgger
+                     STAIRS, ARRIVED; 1 s majority; SENSOR_LOST while no IMU
+                     samples arrive), what Navigate / DAgger
                      show and speak; logged in every mode (empty if no policy)
   advice_raw         the policy's unsmoothed action
   advice_m           meters to the next action (the "in ~X m")

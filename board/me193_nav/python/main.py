@@ -11,7 +11,9 @@ ultrasonic any more). This side:
   every 0.1 s    while recording: the policy (policy.py, models/policy.npz) on
                  the navigator's numbers -> advice (1 s majority) + meters to
                  go, and one CSV row (session.py) with the button presses
-                 since the last row. Modes (chosen at Start):
+                 since the last row. No IMU sample for STALE_S: the advice is
+                 SENSOR_LOST (logged too) and the policy restarts when
+                 samples come back. Modes (chosen at Start):
                    record    buttons LEFT/RIGHT/STAIRS/ARRIVED are labels (a demo)
                    navigate  the page shows and speaks the advice; no labels
                    dagger    navigate + labels, incl. STRAIGHT ("ignore that"):
@@ -69,7 +71,8 @@ ROW_PERIOD_S = 0.1
 FLUSH_EVERY = 5             # rows between file flushes (0.5 s)
 STATUS_PERIOD_S = 5.0
 LED_REFRESH_S = 5.0
-STALE_S = 1.0               # no sample for this long: the page shows "no sensor data"
+STALE_S = 1.0               # no sample for this long: the sensor is lost (page warning, advice SENSOR_LOST)
+SENSOR_LOST = "SENSOR_LOST"
 
 lock = threading.Lock()     # the navigator and the recorder's start/stop
 navigator = nav.Navigator(MODEL)
@@ -95,6 +98,10 @@ received = 0
 last_sample_wall = 0.0
 last_mcu_status = ""
 proc_ms = 0.0
+
+
+def sensor_fresh():
+    return last_sample_wall > 0 and time.time() - last_sample_wall < STALE_S
 
 
 # ---------- sketch -> Python ----------
@@ -144,7 +151,12 @@ def row_loop():
         try:
             with lock:
                 snap, events = navigator.snapshot(), navigator.take_events()
-                if policy:
+                if policy and not sensor_fresh():
+                    # no IMU samples: the numbers are frozen, so don't advise on them; start fresh when back
+                    policy.reset()
+                    advice.update(advice=SENSOR_LOST, advice_raw=SENSOR_LOST, advice_m=0.0)
+                    row_advice = dict(advice)
+                elif policy:
                     raw, smoothed, meters = policy.step(snap)
                     advice.update(advice=smoothed, advice_raw=raw, advice_m=meters)
                     row_advice = dict(advice)
@@ -197,7 +209,7 @@ def state():
             "mode": rec["mode"], "person": rec["person"], "k": navigator.k,
             **(advice if advice and rec["recording"] else {"advice": None, "advice_m": None}),
             "elapsed_s": round(time.time() - rec["started"], 1) if rec["recording"] else None,
-            "events": rec["events"], "sensor_ok": age is not None and age < STALE_S,
+            "events": rec["events"], "sensor_ok": sensor_fresh(),
             "mcu": last_mcu_status, "process_ms": round(proc_ms, 1)}
 
 
