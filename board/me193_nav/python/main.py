@@ -1,4 +1,4 @@
-"""me193_nav: thigh-IMU dead reckoning with a phone page (Record mode).
+"""me193_nav: thigh-IMU dead reckoning with a phone page: Record, Navigate and DAgger modes.
 
 The sketch reads the MPU-6050 at 50 Hz and calls
 Bridge.notify("imu_sample", t, ax, ay, az, gx, gy, gz) for every sample (no
@@ -8,16 +8,24 @@ ultrasonic any more). This side:
                  (cheap); session.Recorder.add_sample() while recording
   every 0.25 s   nav.Navigator.process(): the CNN and gyro step detectors,
                  counted per nav.STEP_SOURCE (gyro), and Weinberg distance
-  every 0.1 s    while recording, one CSV row (session.py) with the button
-                 presses since the last row
+  every 0.1 s    while recording: the policy (policy.py, models/policy.npz) on
+                 the navigator's numbers -> advice (1 s majority) + meters to
+                 go, and one CSV row (session.py) with the button presses
+                 since the last row. Modes (chosen at Start):
+                   record    buttons LEFT/RIGHT/STAIRS/ARRIVED are labels (a demo)
+                   navigate  the page shows and speaks the advice; no labels
+                   dagger    navigate + labels, incl. STRAIGHT ("ignore that"):
+                             the session is cleaned and trained on like a demo
   HTTP :PORT     the phone page (web/index.html) and its API:
                    GET  /                  the page
-                   GET  /api/state         live numbers + recording state
+                   GET  /api/state         live numbers, advice, recording state
+                   GET  /api/people        {name: K} for the "who's walking" selector
                    GET  /api/sessions      recorded sessions
                    GET  /files/<name>      download a session CSV / JSON
-                   POST /api/start         start recording (zeroes distance, heading, counts)
+                   POST /api/start         {"mode": "record"|"navigate"|"dagger", "person": name}:
+                                           start (zeroes distance, heading, counts; the person's K)
                    POST /api/stop
-                   POST /api/event         {"button": "LEFT" | "RIGHT" | "STAIRS" | "ARRIVED"}
+                   POST /api/event         {"button": "LEFT" | "RIGHT" | "STAIRS" | "ARRIVED" | "STRAIGHT"}
   LED matrix     blank while idle (the sketch clears it at boot, so nothing from
                  a previous app stays on); blinking dot while recording.
 
@@ -43,12 +51,15 @@ from urllib.parse import unquote, urlparse
 from arduino.app_utils import App, Bridge, Logger
 
 import nav
+from policy import Policy
 from session import FIELDS, Recorder, SessionError
 
 logger = Logger("me193_nav")
 
 HERE = Path(__file__).resolve().parent
 MODEL = HERE / "models" / "step_detector_imu.npz"
+POLICY = HERE / "models" / "policy.npz"
+PEOPLE = HERE / "people.json"
 PAGE = HERE / "web" / "index.html"
 RECORD_DIR = Path(os.environ.get("NAV_RECORD_DIR", HERE.parent / "recordings"))
 PORT = int(os.environ.get("NAV_PORT", "7000"))
@@ -67,6 +78,18 @@ recorder = Recorder(RECORD_DIR, meta={
     "turn": {"deg": nav.TURN_DEG, "window_s": nav.TURN_WINDOW_S},
     "turning_flag_dps": {"enter": nav.TURN_ENTER_DPS, "exit": nav.TURN_EXIT_DPS},
     "model": MODEL.name, "columns": list(FIELDS)})
+
+try:
+    policy = Policy(POLICY)
+except (OSError, KeyError, ValueError) as e:      # no policy deployed: Record mode still works
+    policy = None
+    logger.error(f"no navigation policy ({POLICY}): {e}")
+try:
+    people = {str(k): float(v) for k, v in json.loads(PEOPLE.read_text()).items()}
+except (OSError, ValueError) as e:
+    people = {}
+    logger.error(f"no people.json, everyone gets K {nav.WEINBERG_K}: {e}")
+advice = {"advice": "STRAIGHT", "advice_raw": "STRAIGHT", "advice_m": 0.0} if policy else None
 
 received = 0
 last_sample_wall = 0.0
@@ -121,11 +144,17 @@ def row_loop():
         try:
             with lock:
                 snap, events = navigator.snapshot(), navigator.take_events()
-            recorder.row(snap, events)
+                if policy:
+                    raw, smoothed, meters = policy.step(snap)
+                    advice.update(advice=smoothed, advice_raw=raw, advice_m=meters)
+                    row_advice = dict(advice)
+                else:
+                    row_advice = None
+            recorder.row(snap, events, row_advice)
             k += 1
             if k % FLUSH_EVERY == 0:
                 recorder.flush()
-        except OSError as e:
+        except Exception as e:                   # never let the logging thread die
             logger.error(f"writing the log failed: {e}")
 
 
@@ -165,6 +194,8 @@ def state():
     rec = recorder.info()
     age = time.time() - last_sample_wall if last_sample_wall else None
     return {**s, "recording": rec["recording"], "session": rec["name"], "rows": rec["rows"],
+            "mode": rec["mode"], "person": rec["person"], "k": navigator.k,
+            **(advice if advice and rec["recording"] else {"advice": None, "advice_m": None}),
             "elapsed_s": round(time.time() - rec["started"], 1) if rec["recording"] else None,
             "events": rec["events"], "sensor_ok": age is not None and age < STALE_S,
             "mcu": last_mcu_status, "process_ms": round(proc_ms, 1)}
@@ -193,6 +224,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
         elif path == "/api/state":
             self._send(200, state())
+        elif path == "/api/people":
+            self._send(200, {"people": people, "default_k": nav.WEINBERG_K, "policy": policy is not None})
         elif path == "/api/sessions":
             self._send(200, recorder.list())
         elif path.startswith("/files/"):
@@ -215,11 +248,19 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "bad JSON"})
         try:
             if path == "/api/start":
+                mode = str(body.get("mode", "record"))
+                person = str(body.get("person") or "").strip()[:40] or None
+                if mode != "record" and policy is None:
+                    raise SessionError("no navigation policy on the board: only Record works")
+                k = people.get(person, nav.WEINBERG_K)
                 with lock:
-                    navigator.start_session(None)
+                    navigator.start_session(None, k)
                     navigator.take_events()
-                    name = recorder.start(navigator.snapshot())
-                logger.info(f"recording {name}")
+                    if policy:
+                        policy.reset()
+                        advice.update(advice="STRAIGHT", advice_raw="STRAIGHT", advice_m=0.0)
+                    name = recorder.start(navigator.snapshot(), mode=mode, person=person, k=k)
+                logger.info(f"recording {name}: {mode}, {person or 'unknown walker'} (K {k})")
                 self._send(200, {"ok": True, "session": name})
             elif path == "/api/stop":
                 with lock:

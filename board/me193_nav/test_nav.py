@@ -7,6 +7,7 @@ test nav.Navigator.process() alone.
 """
 
 import csv
+import json
 import sys
 import tempfile
 import time
@@ -17,6 +18,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / "python"))
 import nav  # noqa: E402
+import policy  # noqa: E402
 import session  # noqa: E402
 
 MODEL = HERE / "python" / "models" / "step_detector_imu.npz"
@@ -164,6 +166,72 @@ def test_session_log():
         assert (Path(d) / f"{name}_imu.csv").exists() and (Path(d) / f"{name}.json").exists()
         assert [s["name"] for s in rec.list()] == [name]
         assert rec.path_for(f"{name}.csv") and rec.path_for("../etc/passwd") is None
+
+
+def test_modes_and_buttons():
+    with tempfile.TemporaryDirectory() as d:
+        n = nav.Navigator(MODEL)
+        for mode, ok, refused in (("record", ["LEFT", "ARRIVED"], ["STRAIGHT"]),
+                                  ("navigate", [], ["LEFT", "STRAIGHT"]),
+                                  ("dagger", ["LEFT", "STRAIGHT", "STAIRS"], [])):
+            rec = session.Recorder(Path(d) / mode)
+            rec.start(n.snapshot(), wall=time.time(), mode=mode, person="Ceci", k=0.7312)
+            for b in ok:
+                rec.event(b)
+            for b in refused:
+                try:
+                    rec.event(b)
+                    raise AssertionError(f"{b} accepted in {mode}")
+                except session.SessionError:
+                    pass
+            rec.row(n.snapshot(), [], {"advice": "LEFT", "advice_raw": "STRAIGHT", "advice_m": 2.04})
+            name, _ = rec.stop(n.snapshot())
+            meta = json.loads((Path(d) / mode / f"{name}.json").read_text())
+            assert (meta["mode"], meta["person"], meta["weinberg_K"]) == (mode, "Ceci", 0.7312)
+            rows = list(csv.DictReader(open(Path(d) / mode / f"{name}.csv")))
+            assert (rows[1]["advice"], rows[1]["advice_m"]) == ("LEFT", "2.0")
+
+
+def test_person_k_scales_distance():
+    steps = [1400, 1428, 1456]                     # inside the kept |a| history
+    a = fake_nav(cnn=[], gyro=steps, source="gyro")
+    b = fake_nav(cnn=[], gyro=[], source="gyro")
+    b.start_session(0, k=0.5)
+    b.gyro.process = lambda: [(j, 0) for j in steps]
+    b.process()
+    assert a.distance_m > 0
+    assert abs(b.distance_m / a.distance_m - 0.5 / nav.WEINBERG_K) < 1e-9, (a.distance_m, b.distance_m)
+
+
+def test_policy_runs_and_smooths():
+    p = policy.Policy(HERE / "python" / "models" / "policy.npz")
+    snap = {"since_turn_m": 0.0, "turns": 0, "distance_m": 0.0, "heading_deg": 0.0}
+    raw, sm, m = p.step(snap)
+    assert raw in p.classes and sm in p.classes and m >= 0
+    # the smoother needs a majority of the last 10 before it changes
+    p.reset()
+    p.hist.extend(["STRAIGHT"] * 5 + ["LEFT"] * 4)
+    p.probs = lambda f: np.eye(len(p.classes))[p.classes.index("LEFT")]
+    assert p.step(snap)[1] == "STRAIGHT"           # 5 LEFT vs 5 STRAIGHT: a tie keeps STRAIGHT
+    assert p.step(snap)[1] == "LEFT"               # 6 vs 4
+
+
+def test_session_started_before_any_sample():
+    # the sensor is down (or not streaming yet) when Start is pressed: no sample time at all
+    with tempfile.TemporaryDirectory() as d:
+        rec = session.Recorder(Path(d))
+        n = nav.Navigator(MODEL)
+        assert n.snapshot()["t"] is None
+        name = rec.start(n.snapshot(), wall=time.time(), mode="dagger")
+        rec.row(n.snapshot(), [])
+        feed(n, 1)
+        rec.row(n.snapshot(), [])
+        name2, rows = rec.stop(n.snapshot())
+        assert name2 == name and not rec.recording
+        meta = json.loads((Path(d) / f"{name}.json").read_text())
+        assert meta["seconds"] is not None
+        log = list(csv.DictReader(open(Path(d) / f"{name}.csv")))
+        assert log[-1]["event"] == "STOP" and float(log[-1]["t_s"]) >= 0
 
 
 if __name__ == "__main__":

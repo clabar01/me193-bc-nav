@@ -105,12 +105,13 @@ def make_runtime(icons, deadline):
     return handlers
 
 
-def feed(path, handlers, speed, loop):
-    """Replay the recording into the imu_sample handler at speed x real time."""
+def feed(path, handlers, speed, loop, delay=0.0):
+    """Replay the recording into the imu_sample handler at speed x real time, after `delay` s."""
     with open(path, newline="") as f:
         rows = [tuple(float(r[k]) for k in FIELDS) for r in csv.DictReader(f)]
     while "imu_sample" not in handlers:
         time.sleep(0.05)
+    time.sleep(delay)
     offset = 0
     while True:
         start, t0 = time.monotonic(), rows[0][0]
@@ -129,6 +130,8 @@ def main():
     ap.add_argument("--replay", type=Path, help="IMU CSV to replay (t_ms, ax..gz)")
     ap.add_argument("--speed", type=float, default=1.0, help="replay speed (1 = real time)")
     ap.add_argument("--loop", action="store_true", help="replay the recording over and over")
+    ap.add_argument("--delay", type=float, default=0.0,
+                    help="wait this long before replaying (time to press Start first)")
     ap.add_argument("--port", type=int, default=7000)
     ap.add_argument("--record-dir", type=Path, default=REPO / "data" / "sim" / "nav")
     ap.add_argument("--seconds", type=float, default=None, help="stop after this long")
@@ -146,7 +149,7 @@ def main():
     os.environ["NAV_PORT"] = str(args.port)
     deadline = time.monotonic() + args.seconds if args.seconds else None
     handlers = make_runtime(icons, deadline)
-    threading.Thread(target=feed, args=(args.replay, handlers, args.speed, args.loop), daemon=True).start()
+    threading.Thread(target=feed, args=(args.replay, handlers, args.speed, args.loop, args.delay), daemon=True).start()
     print(f"board app on the laptop: replaying {args.replay} at {args.speed}x; http://localhost:{args.port}/",
           flush=True)
 

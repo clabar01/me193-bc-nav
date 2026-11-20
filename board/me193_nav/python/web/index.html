@@ -7,14 +7,14 @@
 <title>me193 nav</title>
 <style>
   :root {
-    --bg: #f4f4f2; --card: #ffffff; --ink: #141414; --muted: #5d5d58; --line: #deded9;
-    --left: #2a6fd6; --right: #d9601f; --stairs: #7a4bc4; --arrived: #12925f;
+    --bg: #f4f4f2; --card: #ffffff; --ink: #141414; --muted: #5d5d58; --line: #deded9; --soft: #ecebe7;
+    --left: #2a6fd6; --right: #d9601f; --stairs: #7a4bc4; --arrived: #12925f; --straight: #5d5d58;
     --rec: #d62e2e; --ok: #12925f; --warn: #c98a00;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #111214; --card: #1c1d20; --ink: #f2f2ef; --muted: #a2a29c; --line: #2e2f33;
-      --left: #4a8cf0; --right: #f07a3a; --stairs: #9b6fe0; --arrived: #2bb37c;
+      --bg: #111214; --card: #1c1d20; --ink: #f2f2ef; --muted: #a2a29c; --line: #2e2f33; --soft: #26272b;
+      --left: #4a8cf0; --right: #f07a3a; --stairs: #9b6fe0; --arrived: #2bb37c; --straight: #a2a29c;
       --rec: #f04848; --ok: #2bb37c; --warn: #e0a525;
     }
   }
@@ -26,25 +26,41 @@
     padding: max(12px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
   header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
   header h1 { font-size: 17px; margin: 0; font-weight: 650; }
-  header .mode { font-size: 13px; color: var(--muted); border: 1px solid var(--line);
-    border-radius: 99px; padding: 2px 9px; }
   header .link { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); }
   .dot.ok { background: var(--ok); } .dot.bad { background: var(--rec); }
 
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
-  .live { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
-  .big { font-size: 46px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1; }
-  .big small { font-size: 20px; font-weight: 600; color: var(--muted); margin-left: 2px; letter-spacing: 0; }
   .label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+
+  /* setup */
+  .setup { display: grid; gap: 12px; margin-bottom: 12px; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--soft); border-radius: 12px; padding: 4px; gap: 4px; }
+  .seg button { border: 0; border-radius: 9px; padding: 12px 4px; font-size: 16px; font-weight: 650; color: var(--muted);
+    background: transparent; touch-action: manipulation; }
+  .seg button[aria-pressed=true] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .seg button:disabled { opacity: .5; }
+  .modehelp { font-size: 13px; color: var(--muted); margin-top: -4px; }
+  select { width: 100%; font-size: 17px; padding: 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); color: var(--ink); }
+
+  /* advice */
+  .advice { display: none; text-align: center; padding: 18px 14px 14px; margin-bottom: 12px; }
+  .advice.show { display: block; }
+  .advice svg { width: min(46vw, 210px); height: min(46vw, 210px); display: block; margin: 0 auto; transition: transform .25s; }
+  .advice .what { font-size: 32px; font-weight: 800; margin-top: 6px; }
+  .advice .far { font-size: 22px; font-weight: 600; color: var(--muted); min-height: 28px; font-variant-numeric: tabular-nums; }
+  .voice { margin-top: 10px; border: 1px solid var(--line); background: var(--soft); color: var(--ink); border-radius: 99px;
+    padding: 8px 14px; font-size: 14px; font-weight: 600; touch-action: manipulation; }
+  .voice.on { color: var(--ok); }
+
+  .live { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+  .big { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1; }
+  .big small { font-size: 18px; font-weight: 600; color: var(--muted); margin-left: 2px; letter-spacing: 0; }
   .sub { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .heading { display: flex; align-items: center; gap: 10px; }
-  .arrow { width: 40px; height: 40px; flex: none; transition: transform .2s; }
   .stats { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px;
     padding-top: 10px; border-top: 1px solid var(--line); font-size: 15px; font-variant-numeric: tabular-nums; }
   .stats b { font-weight: 650; }
-  .chip { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; color: #fff; background: var(--muted); }
-  .chip.gyro { background: var(--warn); } .chip.cnn { background: var(--left); }
 
   .startstop { width: 100%; margin: 12px 0; padding: 18px; border: 0; border-radius: 14px;
     font-size: 22px; font-weight: 700; color: #fff; background: var(--ok); touch-action: manipulation; }
@@ -54,14 +70,17 @@
     font-variant-numeric: tabular-nums; }
 
   .pad { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .ev { position: relative; height: min(22vh, 170px); min-height: 110px; border: 0; border-radius: 16px;
-    font-size: 24px; font-weight: 800; letter-spacing: .04em; color: #fff; touch-action: manipulation;
+  .pad.hide { display: none; }
+  .ev { position: relative; height: min(18vh, 150px); min-height: 96px; border: 0; border-radius: 16px;
+    font-size: 23px; font-weight: 800; letter-spacing: .04em; color: #fff; touch-action: manipulation;
     transition: transform .06s, filter .06s; user-select: none; -webkit-user-select: none; }
   .ev:active:not(:disabled) { transform: scale(.97); filter: brightness(1.15); }
   .ev:disabled { filter: grayscale(1); opacity: .35; }
   .ev.flash { filter: brightness(1.45); }
   .ev[data-b=LEFT] { background: var(--left); } .ev[data-b=RIGHT] { background: var(--right); }
   .ev[data-b=STAIRS] { background: var(--stairs); } .ev[data-b=ARRIVED] { background: var(--arrived); }
+  .ev[data-b=STRAIGHT] { background: var(--straight); grid-column: 1 / -1; height: 76px; min-height: 0; font-size: 19px; }
+  .ev[data-b=STRAIGHT].hide { display: none; }
   .ev .n { position: absolute; top: 8px; right: 10px; font-size: 14px; font-weight: 700; opacity: .85; }
 
   .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -81,9 +100,29 @@
 <body>
 <main>
   <header>
-    <h1>me193 nav</h1><span class="mode">Record</span>
+    <h1>me193 nav</h1>
     <span class="link"><span class="dot" id="dot"></span><span id="linktext">connecting…</span></span>
   </header>
+
+  <section class="card setup" id="setup">
+    <div>
+      <div class="label" id="modelabel">Mode</div>
+      <div class="seg" role="group" aria-labelledby="modelabel" id="modes">
+        <button data-m="record" aria-pressed="true">Record</button>
+        <button data-m="navigate" aria-pressed="false">Navigate</button>
+        <button data-m="dagger" aria-pressed="false">DAgger</button>
+      </div>
+    </div>
+    <div class="modehelp" id="modehelp"></div>
+    <label><div class="label">Who's walking</div><select id="person"></select></label>
+  </section>
+
+  <section class="card advice" id="advice" aria-live="assertive">
+    <svg id="icon" viewBox="0 0 100 100" aria-hidden="true"></svg>
+    <div class="what" id="what">–</div>
+    <div class="far" id="far"></div>
+    <button class="voice" id="voice">Tap to turn on voice</button>
+  </section>
 
   <section class="card live" aria-live="polite">
     <div>
@@ -93,19 +132,12 @@
     </div>
     <div>
       <div class="label">Heading</div>
-      <div class="heading">
-        <div class="big" id="head">–<small>°</small></div>
-        <svg class="arrow" id="arrow" viewBox="0 0 40 40" aria-hidden="true">
-          <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" stroke-opacity=".25" stroke-width="2"/>
-          <path d="M20 5 L28 27 L20 22 L12 27 Z" fill="currentColor"/>
-        </svg>
-      </div>
+      <div class="big" id="head">–<small>°</small></div>
       <div class="sub">+ = right of start</div>
     </div>
     <div class="stats">
       <span>Steps <b id="steps">–</b></span>
       <span>Turns <b id="turns">–</b></span>
-      <span><span class="chip" id="det">–</span></span>
       <span class="sub">cnn <span id="cnn">–</span> · gyro <span id="gyro">–</span></span>
     </div>
   </section>
@@ -113,11 +145,12 @@
   <button class="startstop" id="startstop" disabled>Start</button>
   <div class="session" id="session"></div>
 
-  <section class="pad">
+  <section class="pad" id="pad">
     <button class="ev" data-b="LEFT" disabled>LEFT<span class="n"></span></button>
     <button class="ev" data-b="RIGHT" disabled>RIGHT<span class="n"></span></button>
     <button class="ev" data-b="STAIRS" disabled>STAIRS<span class="n"></span></button>
     <button class="ev" data-b="ARRIVED" disabled>ARRIVED<span class="n"></span></button>
+    <button class="ev hide" data-b="STRAIGHT" disabled>STRAIGHT – ignore that<span class="n"></span></button>
   </section>
 
   <h2>Recordings</h2>
@@ -127,8 +160,29 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
-let st = null, failures = 0, busy = false, counts = {};
+const HELP = {
+  record: "Demo: press LEFT / RIGHT / STAIRS / ARRIVED as you do them.",
+  navigate: "The board tells you what's next. No labels.",
+  dagger: "Navigate, and correct it: your presses (and STRAIGHT = ignore that) are logged as labels.",
+};
+const BUTTONS = { record: ["LEFT", "RIGHT", "STAIRS", "ARRIVED"], navigate: [],
+                  dagger: ["LEFT", "RIGHT", "STAIRS", "ARRIVED", "STRAIGHT"] };
+const WORDS = { STRAIGHT: "Straight on", LEFT: "Turn left", RIGHT: "Turn right", STAIRS: "Stairs", ARRIVED: "Arrived" };
+const COLOR = { STRAIGHT: "--straight", LEFT: "--left", RIGHT: "--right", STAIRS: "--stairs", ARRIVED: "--arrived" };
+const ARROW = '<path d="M50 8 L82 44 H62 V92 H38 V44 H18 Z" fill="currentColor"/>';
+const ICONS = {
+  STRAIGHT: ARROW, LEFT: ARROW, RIGHT: ARROW,
+  STAIRS: '<path d="M10 88 H34 V68 H52 V48 H70 V28 H90 V40 H80 V58 H62 V78 H44 V98 H10 Z" fill="currentColor"/>',
+  ARRIVED: '<circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="9"/>' +
+           '<path d="M30 52 L45 66 L72 36" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>',
+};
+const ROT = { LEFT: -90, RIGHT: 90 };
 
+let st = null, failures = 0, busy = false, counts = {}, mode = "record", people = {}, policyOk = false;
+let voiceOn = false, lastSaid = null, shown = null;
+
+function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function recall(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function toast(msg) {
   const t = $("toast");
   t.textContent = msg; t.classList.add("show");
@@ -141,6 +195,26 @@ function fmtTime(s) {
   return `${m}:${String(r).padStart(2, "0")}`;
 }
 
+// iPhone only lets a page speak after a tap has started speech once
+function unlockVoice() {
+  if (voiceOn || !("speechSynthesis" in window)) return;
+  const u = new SpeechSynthesisUtterance("Voice on");
+  u.volume = 0.6;
+  speechSynthesis.speak(u);
+  voiceOn = true;
+  $("voice").textContent = "Voice on"; $("voice").classList.add("on");
+}
+function say(text) {
+  if (!voiceOn) return;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+}
+function phrase(a, m) {
+  if (a === "ARRIVED") return "You have arrived";
+  if (a === "STAIRS") return m >= 1 ? `Stairs in about ${Math.round(m)} meters` : "Stairs";
+  return m >= 1 ? `${WORDS[a]} in about ${Math.round(m)} meters` : WORDS[a];
+}
+
 async function post(path, body) {
   const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify(body || {}) });
@@ -149,27 +223,57 @@ async function post(path, body) {
   return j;
 }
 
+function setMode(m) {
+  mode = m; store("mode", m);
+  document.querySelectorAll("#modes button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.m === m));
+  $("modehelp").textContent = HELP[m] + (m !== "record" && !policyOk ? " (No policy on the board yet.)" : "");
+  render();
+}
+
+function renderAdvice(active) {
+  $("advice").classList.toggle("show", active);
+  if (!active) { shown = null; return; }
+  const a = st.advice || "STRAIGHT";
+  if (a !== shown) {
+    $("icon").innerHTML = ICONS[a];
+    $("icon").style.transform = `rotate(${ROT[a] || 0}deg)`;
+    $("icon").style.color = `var(${COLOR[a]})`;
+    $("what").textContent = WORDS[a];
+    shown = a;
+  }
+  $("far").textContent = a === "STRAIGHT" || a === "ARRIVED" || st.advice_m == null ? "" : `in ~${Math.round(st.advice_m)} m`;
+  if (a !== lastSaid) {
+    if (a !== "STRAIGHT") say(phrase(a, st.advice_m)), buzz([60, 40, 60]);
+    lastSaid = a;
+  }
+}
+
 function render() {
   const linked = failures === 0 && st;
   $("dot").className = "dot " + (!linked ? "bad" : st.sensor_ok ? "ok" : "");
   $("linktext").textContent = !linked ? "no connection" : st.sensor_ok ? "live" : "no sensor data";
+  const rec = !!(st && st.recording);
+  const m = rec ? st.mode : mode;
+  document.querySelectorAll("#modes button").forEach((b) => b.disabled = rec);
+  $("person").disabled = rec;
   if (!st) return;
   $("dist").innerHTML = `${st.distance_m.toFixed(1)}<small>m</small>`;
   $("since").textContent = st.since_turn_m.toFixed(1);
   $("head").innerHTML = `${st.heading_deg > 0 ? "+" : ""}${Math.round(st.heading_deg)}<small>°</small>`;
-  $("arrow").style.transform = `rotate(${st.heading_deg}deg)`;
   $("steps").textContent = st.steps;
   $("turns").textContent = st.turns + (st.last_turn ? ` (last ${st.last_turn})` : "");
-  $("det").textContent = st.detector.toUpperCase();
-  $("det").className = "chip " + st.detector;
   $("cnn").textContent = st.cnn_steps; $("gyro").textContent = st.gyro_steps;
+  renderAdvice(rec && m !== "record");
   const ss = $("startstop");
   ss.disabled = busy || !linked;
-  ss.textContent = st.recording ? "Stop" : "Start";
-  ss.classList.toggle("rec", st.recording);
-  $("session").textContent = st.recording ? `● ${st.session} · ${fmtTime(st.elapsed_s)}` : "";
+  ss.textContent = rec ? "Stop" : `Start ${m === "record" ? "recording" : m === "navigate" ? "navigating" : "DAgger"}`;
+  ss.classList.toggle("rec", rec);
+  $("session").textContent = rec ? `● ${st.session} · ${st.mode} · ${st.person || "unknown walker"} · ${fmtTime(st.elapsed_s)}` : "";
+  $("pad").classList.toggle("hide", BUTTONS[m].length === 0);
   document.querySelectorAll(".ev").forEach((b) => {
-    b.disabled = !st.recording || !linked;
+    const allowed = BUTTONS[m].includes(b.dataset.b);
+    if (b.dataset.b === "STRAIGHT") b.classList.toggle("hide", !allowed);
+    b.disabled = !rec || !linked || !allowed;
     b.querySelector(".n").textContent = counts[b.dataset.b] || "";
   });
 }
@@ -183,6 +287,20 @@ async function poll() {
   } catch (e) { failures++; }
   render();
   setTimeout(poll, 250);
+}
+
+async function loadPeople() {
+  try {
+    const j = await (await fetch("/api/people", { cache: "no-store" })).json();
+    people = j.people || {}; policyOk = !!j.policy;
+    const sel = $("person");
+    sel.innerHTML = "";
+    for (const [name, k] of Object.entries(people)) sel.add(new Option(`${name} (K ${k})`, name));
+    sel.add(new Option(`Someone else (K ${j.default_k})`, ""));
+    const last = recall("person");
+    if (last !== null && [...sel.options].some((o) => o.value === last)) sel.value = last;
+    setMode(mode);
+  } catch (e) { setTimeout(loadPeople, 2000); }
 }
 
 async function loadFiles() {
@@ -209,18 +327,23 @@ async function loadFiles() {
   } catch (e) {}
 }
 
+document.querySelectorAll("#modes button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.m)));
+$("person").addEventListener("change", (e) => store("person", e.target.value));
+$("voice").addEventListener("click", unlockVoice);
+
 $("startstop").addEventListener("click", async () => {
   if (!st || busy) return;
-  if (st.recording && !confirm("Stop recording?")) return;
+  if (st.recording && !confirm("Stop?")) return;
+  if (!st.recording && mode !== "record") unlockVoice();      // this tap unlocks speech on iPhone
   busy = true; render();
   try {
     if (st.recording) {
       const j = await post("/api/stop");
       toast(`Saved ${j.session} (${j.rows} rows)`);
     } else {
-      const j = await post("/api/start");
-      counts = {};
-      toast(`Recording ${j.session}`); buzz(60);
+      const j = await post("/api/start", { mode, person: $("person").value });
+      counts = {}; lastSaid = "STRAIGHT";
+      toast(`${mode === "record" ? "Recording" : mode === "navigate" ? "Navigating" : "DAgger"}: ${j.session}`); buzz(60);
     }
     loadFiles();
   } catch (e) { toast(e.message); }
@@ -235,11 +358,15 @@ document.querySelectorAll(".ev").forEach((b) => {
     try {
       await post("/api/event", { button: name });
       counts[name] = (counts[name] || 0) + 1;
-      toast(name); render();
+      toast(name === "STRAIGHT" ? "STRAIGHT – noted" : name); render();
     } catch (e) { toast(`${name} not logged: ${e.message}`); buzz([80, 60, 80]); }
   });
 });
 
+const saved = recall("mode");
+if (saved && BUTTONS[saved]) mode = saved;
+setMode(mode);
+loadPeople();
 poll();
 loadFiles();
 </script>

@@ -23,7 +23,7 @@ REPO = Path(__file__).resolve().parent.parent
 INK, MUTED, GRID, SHADE = "#0b0b0b", "#52514e", "#e4e3df", "#ecebe7"
 SERIES = {"steps": "#2a78d6", "cnn_steps": "#eb6834", "gyro_steps": "#1baf7a"}   # categorical slots 1-3
 LABELS = {"steps": "counted (steps)", "cnn_steps": "CNN", "gyro_steps": "gyro stride detector"}
-BUTTON_MARK = {"LEFT": "<", "RIGHT": ">", "STAIRS": "s", "ARRIVED": "*"}
+BUTTON_MARK = {"LEFT": "<", "RIGHT": ">", "STAIRS": "s", "ARRIVED": "*", "STRAIGHT": "^"}
 TURN_MARK = {"TURN_L": "<", "TURN_R": ">"}
 
 

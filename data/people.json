@@ -1,0 +1,13 @@
+{
+ "reference": {"person": "Ceci", "K": 0.7312,
+               "from": "scripts/calibrate_weinberg.py --steps gyro (tape-measured hallway trials)"},
+ "note": "rec_20261120-203227 is Ceci (the user said so). The other demo walks are INFERRED: on the same route Ceci's take 92 steps and the others 95-98, alternating in time. Correct here if wrong, then rerun scripts/fit_person_k.py and scripts/train_policy.py.",
+ "sessions": {
+  "rec_20261120-203227": {"person": "Ceci", "route": "start-Nolop", "source": "user"},
+  "rec_20261120-203759": {"person": "Ryan", "route": "start-Nolop", "source": "inferred"},
+  "rec_20261120-204001": {"person": "Ceci", "route": "start-Nolop", "source": "inferred"},
+  "rec_20261120-204400": {"person": "Ryan", "route": "start-Nolop", "source": "inferred"},
+  "rec_20261120-205439": {"person": "Ceci", "route": "start-Nolop", "source": "inferred"},
+  "rec_20261120-205635": {"person": "Ryan", "route": "start-Nolop", "source": "inferred"}
+ }
+}

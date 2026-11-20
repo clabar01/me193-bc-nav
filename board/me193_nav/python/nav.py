@@ -51,7 +51,8 @@ Steps: STEP_SOURCE = "gyro" (current) or "fused"
 Distance (Weinberg)
     Each fused step's length is K * (max|a| - min|a|)^0.25 over the interval
     from the previous fused step (if within 1.5 s; else the last typical step
-    interval) to this step. K = WEINBERG_K (scripts/calibrate_weinberg.py, all 14
+    interval) to this step. K is the walker's (start_session; people.json via
+    scripts/fit_person_k.py), WEINBERG_K by default (scripts/calibrate_weinberg.py, all 14
     old hallway distance trials). distance_since_turn adds only steps at or
     after the sample where the last turn was detected.
 """
@@ -124,8 +125,10 @@ class Navigator:
         self.start_session(None)
 
     # ---------- session ----------
-    def start_session(self, index):
-        """Zero the totals from sample `index` on (None = from the next sample)."""
+    def start_session(self, index, k=None):
+        """Zero the totals from sample `index` on (None = from the next sample). k: the walker's
+        Weinberg K (board people.json, scripts/fit_person_k.py); None = WEINBERG_K."""
+        self.k = WEINBERG_K if k is None else float(k)
         self.start = self.n if index is None else index
         self.heading0 = self.heading
         self.steps = self.cnn_steps = self.gyro_steps = 0
@@ -271,7 +274,7 @@ class Navigator:
         if hi - lo < 2:
             return 0.0
         seg = np.fromiter((self.acc[k] for k in range(lo, hi)), float, hi - lo)
-        return WEINBERG_K * float(seg.max() - seg.min()) ** WEINBERG_EXP
+        return self.k * float(seg.max() - seg.min()) ** WEINBERG_EXP
 
     # ---------- for the log and the page ----------
     def take_events(self):

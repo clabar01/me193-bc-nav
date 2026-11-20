@@ -23,7 +23,7 @@ Rules (nothing is dropped: every press stays in the events file with a status)
   STAIRS: consecutive presses pair into start/end windows (STAIRS_START /
     STAIRS_END); an odd one out is "unpaired", several in one 0.1 s row are
     flagged.
-  ARRIVED: kept as is.
+  ARRIVED, and STRAIGHT (DAgger: "the policy is wrong here"): kept as is.
 """
 
 import argparse
@@ -104,7 +104,7 @@ def clean(csv):
                          "note": f"heading {heading_change(df, tt - 2, tt + 3):+.0f} deg; "
                                  f"{'inside' if inside else 'outside'} STAIRS window"})
     for t, e in events:
-        if e == "ARRIVED":
+        if e in ("ARRIVED", "STRAIGHT"):
             rows.append({"t_s": t, "event": e, "raw_t_s": t, "status": "ok", "note": ""})
 
     ev = pd.DataFrame(rows, columns=["t_s", "event", "raw_t_s", "status", "note"]).sort_values("t_s")
