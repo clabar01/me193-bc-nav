@@ -52,17 +52,18 @@ def spans(t, mask):
     return out
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("csv", nargs="?", type=Path, help="session CSV (default: newest rec_*.csv in data/raw/)")
-    ap.add_argument("--out", type=Path, help="PNG to write (default: next to the CSV)")
-    args = ap.parse_args()
-    csv = args.csv or max((p for p in (REPO / "data" / "raw").glob("rec_*.csv") if not p.stem.endswith("_imu")),
-                          key=lambda p: p.stem)
+def events_of(df):
+    """[(t_s, name)] of every logged event, ";"-joined ones split."""
+    return [(ti, e) for ti, ev in zip(df["t_s"], df["event"].fillna("")) for e in ev.split(";") if e]
+
+
+def draw(csv, title=None):
+    """The three-panel figure for one session CSV. Returns (fig, (heading, steps, events) axes, df,
+    button events, auto turns), so other scripts (clean_labels.py) can draw on top of it."""
     df = pd.read_csv(csv)
     df["event"] = df["event"].fillna("")
     t = df["t_s"]
-    events = [(ti, e) for ti, ev in zip(t, df["event"]) for e in ev.split(";") if e]
+    events = events_of(df)
     buttons = [(ti, e) for ti, e in events if e in BUTTON_MARK]
     turns = [(ti, e) for ti, e in events if e in TURN_MARK]
 
@@ -78,7 +79,7 @@ def main():
 
     a1.plot(t, df["heading_deg"], color=SERIES["steps"], linewidth=2)
     style(a1, "heading (deg, + = right)")
-    a1.set_title(f"{csv.stem}: heading, step counts and events"
+    a1.set_title(title or f"{csv.stem}: heading, step counts and events"
                  + ("   (shaded = gyro detector active, turning)" if gyro_on else ""),
                  loc="left", color=INK, fontsize=11)
 
@@ -110,7 +111,18 @@ def main():
     a3.grid(axis="y", visible=False)
     a3.set_xlabel("time since Start (s)", color=MUTED)
     a3.set_xlim(t.iloc[0], end * 1.16)       # room for the end labels
+    return fig, (a1, a2, a3), df, buttons, turns
 
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("csv", nargs="?", type=Path, help="session CSV (default: newest rec_*.csv in data/raw/)")
+    ap.add_argument("--out", type=Path, help="PNG to write (default: next to the CSV)")
+    args = ap.parse_args()
+    csv = args.csv or max((p for p in (REPO / "data" / "raw").glob("rec_*.csv") if not p.stem.endswith("_imu")),
+                          key=lambda p: p.stem)
+    fig, _, df, buttons, turns = draw(csv)
+    end = df["t_s"].iloc[-1]
     out = args.out or csv.with_suffix(".png")
     fig.savefig(out, dpi=130)
     last = df.iloc[-1]

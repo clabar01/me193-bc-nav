@@ -1,0 +1,9 @@
+t_s,event,raw_t_s,status,note
+6.42,RIGHT,5.52,matched,TURN_R +0.9 s
+28.0,TURN_L,28.0,unlabeled_turn,heading -95 deg; outside STAIRS window
+39.2,LEFT,39.2,unmatched,no turn: heading -21 deg within +-3 s; nearest unlabeled TURN_L -11.2 s
+43.28,STAIRS_START,43.28,ok,
+45.98,STAIRS_END,45.98,ok,
+49.88,LEFT,49.08,matched,TURN_L +0.8 s
+51.08,LEFT,51.08,rotation,"heading -180 deg within +-3 s, part of one long turn"
+60.26,ARRIVED,60.26,ok,

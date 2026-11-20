@@ -1,0 +1,8 @@
+t_s,event,raw_t_s,status,note
+5.82,RIGHT,4.62,matched,TURN_R +1.2 s
+28.1,LEFT,26.7,matched,TURN_L +1.4 s
+31.9,STAIRS_START,31.9,ok,
+47.08,STAIRS_END,47.08,ok,
+51.78,LEFT,50.18,matched,TURN_L +1.6 s
+54.78,LEFT,53.88,matched,TURN_L +0.9 s
+64.76,ARRIVED,64.76,ok,

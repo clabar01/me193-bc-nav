@@ -1,0 +1,48 @@
+{
+  "name": "rec_20261120-205439",
+  "csv": "rec_20261120-205439.csv",
+  "imu_csv": "rec_20261120-205439_imu.csv",
+  "started_at": "2026-11-20T20:54:39+00:00",
+  "stopped_at": "2026-11-20T20:55:41+00:00",
+  "rows": 623,
+  "seconds": 62.0,
+  "totals": {
+    "t": 255040,
+    "distance_m": 71.79,
+    "since_turn_m": 11.42,
+    "heading_deg": -226.0,
+    "heading_rate_dps": 1.2,
+    "turns": 4,
+    "last_turn": "L",
+    "steps": 92,
+    "cnn_steps": 17,
+    "gyro_steps": 92,
+    "detector": "gyro"
+  },
+  "mode": "record",
+  "step_source": "gyro",
+  "weinberg_K": 0.7312,
+  "walk_yaw_drift_dps": 1.73,
+  "turn": {
+    "deg": 60.0,
+    "window_s": 2.0
+  },
+  "turning_flag_dps": {
+    "enter": 30.0,
+    "exit": 15.0
+  },
+  "model": "step_detector_imu.npz",
+  "columns": [
+    "unix_time",
+    "t_s",
+    "distance_m",
+    "since_turn_m",
+    "heading_deg",
+    "turns",
+    "steps",
+    "cnn_steps",
+    "gyro_steps",
+    "detector",
+    "event"
+  ]
+}

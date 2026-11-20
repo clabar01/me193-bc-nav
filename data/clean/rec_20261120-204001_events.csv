@@ -1,0 +1,8 @@
+t_s,event,raw_t_s,status,note
+3.9,RIGHT,3.2,matched,TURN_R +0.7 s
+26.18,LEFT,25.68,matched,TURN_L +0.5 s
+29.36,STAIRS_START,29.36,ok,
+43.36,STAIRS_END,43.36,ok,
+45.86,LEFT,45.56,matched,TURN_L +0.3 s
+47.36,LEFT,47.36,rotation,"heading -184 deg within +-3 s, part of one long turn"
+57.14,ARRIVED,57.14,ok,

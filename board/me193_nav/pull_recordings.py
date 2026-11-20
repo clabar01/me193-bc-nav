@@ -2,9 +2,9 @@
 
 A session is finished when its <name>.json exists (written at Stop), so one
 still recording is never copied. Each session is three files: <name>.csv
-(10 Hz log), <name>_imu.csv (50 Hz IMU) and <name>.json. Files already in
-data/raw/ are never overwritten; a same-named file with a different size is
-reported instead.
+(10 Hz log), <name>_imu.csv (50 Hz IMU) and <name>.json. Sessions with files
+in data/discarded/ are skipped. Files already in data/raw/ are never
+overwritten; a same-named file with a different size is reported instead.
 
     python board/me193_nav/pull_recordings.py
     BOARD=arduino@<ip> python board/me193_nav/pull_recordings.py
@@ -43,6 +43,8 @@ def main():
     ap.add_argument("--remote-dir", default=REMOTE_DIR)
     ap.add_argument("--src", type=Path, help="copy from this local folder instead of the board")
     ap.add_argument("--dest", type=Path, default=REPO / "data" / "raw")
+    ap.add_argument("--discarded", type=Path, default=REPO / "data" / "discarded",
+                    help="sessions with files here are never pulled again")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -53,9 +55,14 @@ def main():
     open_ = sorted(n[:-4] for n in files if n.startswith("rec_") and n.endswith(".csv")
                    and not n.endswith("_imu.csv") and f"{n[:-4]}.json" not in files)
 
+    discarded = {p.name.split(".")[0].removesuffix("_imu") for p in args.discarded.glob("rec_*")} \
+        if args.discarded.is_dir() else set()
+    skipped = sorted(n for n in done if n in discarded)
     args.dest.mkdir(parents=True, exist_ok=True)
     wanted, conflicts = [], []
     for name in done:
+        if name in discarded:
+            continue
         for fname in (f"{name}.csv", f"{name}_imu.csv", f"{name}.json"):
             if fname not in files:
                 continue
@@ -65,7 +72,8 @@ def main():
             elif local.stat().st_size != files[fname]:
                 conflicts.append(fname)
 
-    print(f"{where}: {len(done)} finished sessions, {len(open_)} still recording")
+    print(f"{where}: {len(done)} finished sessions, {len(open_)} still recording"
+          f"{f', {len(skipped)} discarded (skipped)' if skipped else ''}")
     for fname in conflicts:
         print(f"  CONFLICT, not copied: {fname} is already in {args.dest} with a different size")
     if not wanted:
