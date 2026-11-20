@@ -47,6 +47,9 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "board" / "me193_nav" / "python"))
 import policy  # noqa: E402
 
+sys.path.insert(0, str(REPO / "scripts"))
+import clean_labels  # noqa: E402
+
 CLASSES = ("STRAIGHT", "LEFT", "RIGHT", "STAIRS", "ARRIVED")
 HORIZON_M = 3.0
 EVAL_BEFORE_M = 10.0        # an announcement counts if it starts at most this far before the action
@@ -57,7 +60,9 @@ MLP_HIDDEN = (32, 32)
 TIE = 0.02                  # scores closer than this are a tie on 6 walks
 
 
-def load_walks():
+def load_walks(fixes=True):
+    """Every cleaned walk, labeled. fixes=False: events re-cleaned without data/label_fixes.json
+    (the labels the pre-DAgger model was trained on)."""
     people = json.loads((REPO / "data" / "people.json").read_text())["sessions"]
     ks = json.loads((REPO / "board" / "me193_nav" / "python" / "people.json").read_text())
     walks = []
@@ -71,8 +76,16 @@ def load_walks():
         scale = ks.get(person, meta.get("weinberg_K")) / meta.get("weinberg_K", ks.get(person))
         df = pd.read_csv(log)
         df[["distance_m", "since_turn_m"]] *= scale
-        ev = pd.read_csv(evf)
-        walks.append(label(name, person, df, ev))
+        if fixes:
+            ev = pd.read_csv(evf)
+        else:
+            saved, clean_labels.FIXES = clean_labels.FIXES, {}
+            ev = clean_labels.clean(log)[1]
+            clean_labels.FIXES = saved
+        w = label(name, person, df, ev)
+        w["mode"] = meta.get("mode", "record")
+        w["live_advice"] = df["advice"].fillna("").to_numpy() if "advice" in df else None
+        walks.append(w)
     return walks
 
 
@@ -195,6 +208,53 @@ def export(walks, kind, cols, names):
     return agree, len(X)
 
 
+def compare(walks, walks_unfixed, kind, cols):
+    """Leave-one-walk-out on every walk (corrected labels as truth) for three training sets:
+    A pre-DAgger as deployed (demos, original labels), B demos with the label fixes, C B + DAgger walks."""
+    unfixed = {w["name"]: w for w in walks_unfixed}
+    variants = {"A: pre-DAgger (demos, original labels)": lambda o: o["mode"] == "record",
+                "B: demos, fixed STAIRS labels": lambda o: o["mode"] == "record",
+                "C: B + DAgger walks (exported)": lambda o: True}
+    rows, per_action = [], []
+    for vname, keep in variants.items():
+        res = []
+        for w in walks:
+            pool = [unfixed[o["name"]] if vname.startswith("A") else o for o in walks if o is not w and keep(o)]
+            m, mean, std = fit(kind, np.concatenate([o["X"][:, cols] for o in pool]), np.concatenate([o["y"] for o in pool]))
+            sm = smooth(m.predict((w["X"][:, cols] - mean) / std))
+            ann, false = announcements(w, sm)
+            res.append((w, sm, ann, false))
+            per_action += [(vname[:1], w["name"][-6:], w["mode"], a, "MISSED" if ahead is None else f"{ahead:.1f}")
+                           for _, a, ahead, _ in ann]
+        rows.append(summarize(vname, res))
+    live = [(w, w["live_advice"]) for w in walks if w["mode"] == "dagger" and w["live_advice"] is not None]
+    if live:
+        res = []
+        for w, adv in live:
+            adv = np.where(adv == "", "STRAIGHT", adv)
+            ann, false = announcements(w, adv)
+            res.append((w, adv, ann, false))
+            per_action += [("live", w["name"][-6:], w["mode"], a, "MISSED" if ahead is None else f"{ahead:.1f}")
+                           for _, a, ahead, _ in ann]
+        rows.append(summarize("deployed pre-DAgger model, live on the DAgger walks (what it actually said)", res))
+    return pd.DataFrame(rows), pd.DataFrame(per_action, columns=["model", "walk", "mode", "action", "m ahead"])
+
+
+def summarize(name, res):
+    ann = [a for _, _, an, _ in res for a in an]
+    stairs = [a for a in ann if a[1] == "STAIRS"]
+    hit = lambda xs: f"{sum(a[2] is not None for a in xs)}/{len(xs)}"  # noqa: E731
+    sa = [a[2] for a in stairs if a[2] is not None]
+    return {"model": name, "walks": len(res),
+            "acc": np.mean([(sm == w["y"]).mean() for w, sm, _, _ in res]),
+            "bal_acc": np.mean([balanced_accuracy_score(w["y"], sm) for w, sm, _, _ in res]),
+            "actions hit": hit(ann), "turns hit": hit([a for a in ann if a[1] in ("LEFT", "RIGHT")]),
+            "STAIRS hit": hit(stairs), "STAIRS m ahead (median)": float(np.median(sa)) if sa else np.nan,
+            "STAIRS m ahead (min-max)": f"{min(sa):.1f}-{max(sa):.1f}" if sa else "",
+            "ARRIVED hit": hit([a for a in ann if a[1] == "ARRIVED"]),
+            "false announcements": sum(f for _, _, _, f in res)}
+
+
 def main():
     walks = load_walks()
     print(f"{len(walks)} walks: " + ", ".join(f"{w['name'][-6:]} ({w['person']}, {len(w['y'])} rows)" for w in walks))
@@ -253,7 +313,17 @@ def main():
         + md(summary) + f"\n\n**Exported: {kind.upper()}, {res['features']}** (within {TIE} of the best mean of balanced "
           f"accuracy and actions hit among the variants that can run live - the board does not measure in_stairs - "
           f"ties going to fewer features, then fewer false announcements).\n\n## Exported model, per walk\n\n" + md(perwalk) + "\n\n" + "\n\n".join(ev_tables) + "\n")
-    print((REPO / "models" / "policy_results.md").read_text())
+    # the comparison asked for: what the label fixes and the DAgger walks changed
+    cmp, acts = compare(walks, load_walks(fixes=False), kind, cols)
+    stairs = acts[acts.action == "STAIRS"].pivot(index="walk", columns="model", values="m ahead")
+    stairs = stairs.fillna("n/a (no live run)").reset_index()     # live advice exists only for DAgger walks
+    print("\n" + cmp.to_string(index=False) + "\n\nSTAIRS, meters ahead:\n" + stairs.to_string(index=False))
+    with open(REPO / "models" / "policy_results.md", "a") as f:
+        f.write(f"\n## Before and after DAgger ({kind.upper()}, {res['features']})\n\nLeave-one-walk-out on all "
+                f"{len(walks)} walks with the corrected labels as truth. A is how the deployed pre-DAgger model was "
+                "trained; B adds only the STAIRS label fixes (data/label_fixes.json); C adds the DAgger walks. "
+                "'live' is what the deployed model actually announced on the DAgger walks.\n\n" + md(cmp)
+                + "\n\n### STAIRS, meters ahead per walk\n\n" + md(stairs) + "\n")
 
 
 if __name__ == "__main__":

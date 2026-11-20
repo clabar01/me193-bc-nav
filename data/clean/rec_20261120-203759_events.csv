@@ -1,7 +1,7 @@
 t_s,event,raw_t_s,status,note
 4.02,RIGHT,4.12,matched,TURN_R -0.1 s
 25.7,TURN_L,25.7,unlabeled_turn,heading -102 deg; outside STAIRS window
-38.3,STAIRS_START,38.3,ok,
+29.4,STAIRS_START,38.3,corrected,first STAIRS press 38.3 s was 16.6 m after the left turn at 25.7 s; moved to 4.1 m after it
 39.6,LEFT,39.6,unmatched,no turn: heading -23 deg within +-3 s; nearest unlabeled TURN_L -13.9 s
 43.9,STAIRS_END,43.9,ok,
 47.08,LEFT,46.38,matched,TURN_L +0.7 s

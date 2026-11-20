@@ -1,0 +1,7 @@
+t_s,event,raw_t_s,status,note
+3.14,TURN_R,3.14,unlabeled_turn,heading +89 deg; outside STAIRS window
+25.12,TURN_L,25.12,unlabeled_turn,heading -91 deg; outside STAIRS window
+30.52,STAIRS_START,30.52,ok,
+43.5,STAIRS_END,43.5,ok,
+45.2,LEFT,47.2,matched,TURN_L -2.0 s
+56.45,ARRIVED,,inferred,no ARRIVED press (DAgger): last counted step 57.8 s - 1.35 s

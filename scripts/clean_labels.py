@@ -23,7 +23,13 @@ Rules (nothing is dropped: every press stays in the events file with a status)
   STAIRS: consecutive presses pair into start/end windows (STAIRS_START /
     STAIRS_END); an odd one out is "unpaired", several in one 0.1 s row are
     flagged.
-  ARRIVED, and STRAIGHT (DAgger: "the policy is wrong here"): kept as is.
+  ARRIVED, and STRAIGHT (DAgger: "the policy is wrong here"): kept as is. A
+    DAgger session without an ARRIVED press gets one "inferred" at its last
+    counted step - ARRIVED_LAG_S (the demos' median).
+  STAIRS rule: presses alternate - first = START (top step), second = END
+    (bottom step); only STAIRS_START is an action, never the END.
+  data/label_fixes.json: reviewed corrections (event moved, status
+    "corrected", raw time kept), e.g. late STAIRS_START presses.
 """
 
 import argparse
@@ -41,6 +47,9 @@ SNAP_S = 3.0
 ROT_DEG = 60.0
 DIST_TOL = 0.15             # walks more than this far from the median distance / steps are flagged
 OUT = REPO / "data" / "clean"
+ARRIVED_LAG_S = 1.35        # demos: the ARRIVED press is a median 1.35 s before the last counted step
+FIXES_PATH = REPO / "data" / "label_fixes.json"
+FIXES = json.loads(FIXES_PATH.read_text()) if FIXES_PATH.exists() else {}
 FLAG = "#e34948"            # status: problem (always with a text label)
 OK = "#52514e"
 
@@ -93,9 +102,9 @@ def clean(csv):
         for t, ev in ((stairs[j], "STAIRS_START"), (stairs[j + 1], "STAIRS_END")):
             rows.append({"t_s": t, "event": ev, "raw_t_s": t, "status": "flagged" if same_row else "ok",
                          "note": "start and end in the same 0.1 s row" if same_row else ""})
-    if len(stairs) % 2:
-        rows.append({"t_s": stairs[-1], "event": "STAIRS", "raw_t_s": stairs[-1], "status": "unpaired",
-                     "note": "odd number of STAIRS presses"})
+    if len(stairs) % 2:                  # presses alternate top step / bottom step: an odd last one is a start
+        rows.append({"t_s": stairs[-1], "event": "STAIRS_START", "raw_t_s": stairs[-1], "status": "unpaired",
+                     "note": "odd number of STAIRS presses: a start without its end"})
 
     for k, (tt, et) in enumerate(turns):
         if k not in used:
@@ -106,6 +115,20 @@ def clean(csv):
     for t, e in events:
         if e in ("ARRIVED", "STRAIGHT"):
             rows.append({"t_s": t, "event": e, "raw_t_s": t, "status": "ok", "note": ""})
+    meta = json.loads(csv.with_suffix(".json").read_text()) if csv.with_suffix(".json").exists() else {}
+    if meta.get("mode") == "dagger" and not any(e == "ARRIVED" for _, e in events) and (df.steps.diff() > 0).any():
+        last = float(df.t_s[df.steps.diff() > 0].iloc[-1])
+        rows.append({"t_s": round(last - ARRIVED_LAG_S, 2), "event": "ARRIVED", "raw_t_s": None, "status": "inferred",
+                     "note": f"no ARRIVED press (DAgger): last counted step {last:.1f} s - {ARRIVED_LAG_S} s"})
+
+    # reviewed label fixes (data/label_fixes.json): move an event, keep its raw time
+    for fix in FIXES.get("sessions", {}).get(csv.stem, []):
+        hit = [r for r in rows if r["event"] == fix["event"] and abs(r["raw_t_s"] - fix["raw_t_s"]) < 0.06]
+        if len(hit) != 1:
+            raise SystemExit(f"{csv.stem}: label fix {fix} matches {len(hit)} events")
+        hit[0].update(t_s=fix["t_s"], status="corrected", note=fix["why"])
+        if fix["event"] == "STAIRS_START":   # the STAIRS window moves with it
+            windows[:] = [(fix["t_s"] if abs(a - fix["raw_t_s"]) < 0.06 else a, b) for a, b in windows]
 
     ev = pd.DataFrame(rows, columns=["t_s", "event", "raw_t_s", "status", "note"]).sort_values("t_s")
     ev[["t_s", "raw_t_s"]] = ev[["t_s", "raw_t_s"]].round(2)

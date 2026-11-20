@@ -1,0 +1,38 @@
+{
+ "_doc": "Label fixes applied by scripts/clean_labels.py (the raw logs are never changed). STAIRS_START: the rule is first STAIRS press = top step, second = bottom step. In these four demos the first press came 16.6-24.4 m after the left turn before the stairs, only 1-7 s before the second, while in the two DAgger walks and demos 204001/204400 the stairs start 3.1, 2.6, 5.1, 5.6 m after that turn and take 13-16 s; the bottom-step press agrees in all walks (22-26 m after the turn). So the start is moved to the median, 4.1 m (walker's own K) after the turn: the first time the logged distance reaches it.",
+ "stairs_start_after_left_turn_m": 4.1,
+ "sessions": {
+  "rec_20261120-203227": [
+   {
+    "event": "STAIRS_START",
+    "raw_t_s": 43.28,
+    "t_s": 33.6,
+    "why": "first STAIRS press 43.3 s was 19.1 m after the left turn at 28.0 s; moved to 4.1 m after it"
+   }
+  ],
+  "rec_20261120-203759": [
+   {
+    "event": "STAIRS_START",
+    "raw_t_s": 38.3,
+    "t_s": 29.4,
+    "why": "first STAIRS press 38.3 s was 16.6 m after the left turn at 25.7 s; moved to 4.1 m after it"
+   }
+  ],
+  "rec_20261120-205439": [
+   {
+    "event": "STAIRS_START",
+    "raw_t_s": 43.26,
+    "t_s": 31.56,
+    "why": "first STAIRS press 43.3 s was 20.7 m after the left turn at 26.8 s; moved to 4.1 m after it"
+   }
+  ],
+  "rec_20261120-205635": [
+   {
+    "event": "STAIRS_START",
+    "raw_t_s": 44.26,
+    "t_s": 31.48,
+    "why": "first STAIRS press 44.3 s was 24.4 m after the left turn at 27.0 s; moved to 4.1 m after it"
+   }
+  ]
+ }
+}
