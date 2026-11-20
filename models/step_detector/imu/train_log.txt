@@ -1,0 +1,42 @@
+data: /Users/cecilabarge/Gait/me193-step-counter/data/raw; train 14, val 7, test C 6, + bench_05 (turns)
+train: A_10, A_07, A_06, A_03, A_01, A_08, A_05, A_13, A_12, B_07, B_01, B_04, B_02, B_05
+val:   A_04, A_09, A_02, A_11, B_08, B_03, B_06
+
+seed 0: training on mps...
+seed 0: kept epoch 695; MAE val 0.86, C 1.50, bench_05 0 of 20
+
+seed 1: training on mps...
+seed 1: kept epoch 789; MAE val 0.86, C 1.17, bench_05 12 of 20
+
+seed 2: training on mps...
+seed 2: kept epoch 623; MAE val 0.71, C 1.67, bench_05 6 of 20
+
+exported seed 2 (lowest validation MAE; session C not used to choose)
+
+set                                method  trials  steps counted              MAE (steps/trial)  bias total
+val old CNN, IMU + ultrasonic (committed)       7            180                           0.29 +0.29 +1.1%
+val  new CNN, IMU only (seed 2, exported)       7            180                           0.71 +0.71 +2.8%
+val                  gyro stride detector       7            180                           0.29 +0.29 +1.1%
+val        new CNN, IMU only, seeds 0/1/2       7            180 0.86 / 0.86 / 0.71 (mean 0.81)            
+  C old CNN, IMU + ultrasonic (committed)       6            173                           3.00 -2.67 -9.2%
+  C  new CNN, IMU only (seed 2, exported)       6            173                           1.67 -1.00 -3.5%
+  C                  gyro stride detector       6            173                           1.17 +0.17 +0.6%
+  C        new CNN, IMU only, seeds 0/1/2       6            173 1.50 / 1.17 / 1.67 (mean 1.44)            
+
+     set    trial  speed  counted  old CNN  new IMU-only CNN  IMU seed 0  IMU seed 1  IMU seed 2  gyro
+     val     A_04   fast       30       30                31          31          31          31    30
+     val     A_09 normal       30       30                31          31          31          31    30
+     val     A_02   slow       30       30                31          31          31          31    30
+     val     A_11 normal        0        0                 0           0           0           0     0
+     val     B_08   fast       12       13                13          13          13          13    12
+     val     B_03 normal       37       37                38          38          38          38    38
+     val     B_06   slow       41       42                41          42          42          41    42
+       C     C_01 normal       30       29                29          29          29          29    28
+       C     C_02   slow       30       29                31          31          31          31    32
+       C     C_03   fast       28       25                26          29          28          26    28
+       C     C_04   slow       29       24                29          28          29          29    28
+       C     C_05 normal       29       30                30          30          30          30    30
+       C     C_06   fast       27       20                22          23          23          22    28
+bench_05 bench_05   fast       20       15                 6           0          12           6    22
+
+saved models/step_detector/imu/ and models/step_detector_imu.npz (69 KB)
